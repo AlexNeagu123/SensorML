@@ -8,67 +8,77 @@ from tensorflow.keras.callbacks import ModelCheckpoint
 from tensorflow.keras.metrics import RootMeanSquaredError
 from tensorflow.keras.optimizers import Adam
 
-from globals import TRAINING_HOURS, RNN_HIDDEN_UNITS, RNN_LAYER_UNITS, RNN_LEARNING_RATE, RNN_EPOCHS, PREDICTION_HOURS
 
+class RnnModel:
+    def __init__(self, training_hours, prediction_hours, hidden_units, layer_units, learning_rate, epochs, window):
+        self.training_hours = training_hours
+        self.prediction_hours = prediction_hours
+        self.hidden_units = hidden_units
+        self.layer_units = layer_units
+        self.learning_rate = learning_rate
+        self.epochs = epochs
+        self.window = window
 
-def data_loader(df_as_np, window=5):
-    # df_as_np = df.to_numpy()
-    inputs = list()
-    expected_outputs = list()
+    def _data_loader(self, df_as_np):
+        # df_as_np = df.to_numpy()
+        inputs = list()
+        expected_outputs = list()
 
-    for i in range(len(df_as_np) - window):
-        row = [[a] for a in df_as_np[i:i + window]]
-        inputs.append(row)
-        expected_outputs.append(df_as_np[i + window])
+        for i in range(len(df_as_np) - self.window):
+            row = [[a] for a in df_as_np[i:i + self.window]]
+            inputs.append(row)
+            expected_outputs.append(df_as_np[i + self.window])
 
-    return np.array(inputs), np.array(expected_outputs)
+        return np.array(inputs), np.array(expected_outputs)
 
+    def make_predictions(self, dataset):
+        variables_to_plot = [col for col in dataset.columns if col != 'Timestamp']
+        for variable in variables_to_plot:
+            original_variable_data = dataset[variable].copy()
+            original_variable_data = original_variable_data.values.reshape(-1, 1)
 
-def make_predictions(dataset, window):
-    variables_to_plot = [col for col in dataset.columns if col != 'Timestamp']
-    for variable in variables_to_plot:
-        original_variable_data = dataset[variable].copy()
-        original_variable_data = original_variable_data.values.reshape(-1, 1)
+            scaler = MinMaxScaler()
+            variable_data = scaler.fit_transform(original_variable_data)
 
-        scaler = MinMaxScaler()
-        variable_data = scaler.fit_transform(original_variable_data)
+            inputs, expected_outputs = self._data_loader(variable_data)
 
-        inputs, expected_outputs = data_loader(variable_data, window)
+            train_inputs, train_outputs = inputs[:self.training_hours], expected_outputs[:self.training_hours]
+            test_inputs = inputs[self.training_hours:(self.training_hours + self.prediction_hours)]
+            test_outputs = expected_outputs[self.training_hours:(self.training_hours + self.prediction_hours)]
 
-        train_inputs, train_outputs = inputs[:TRAINING_HOURS], expected_outputs[:TRAINING_HOURS]
-        test_inputs = inputs[TRAINING_HOURS:(TRAINING_HOURS + PREDICTION_HOURS)]
-        test_outputs = expected_outputs[TRAINING_HOURS:(TRAINING_HOURS + PREDICTION_HOURS)]
+            rnn_model = Sequential()
+            rnn_model.add(InputLayer((self.window, 1)))
+            rnn_model.add(LSTM(self.hidden_units))
+            rnn_model.add(Dense(self.layer_units, 'relu'))
+            rnn_model.add(Dense(1, 'linear'))
 
-        rnnModel = Sequential()
-        rnnModel.add(InputLayer((window, 1)))
-        rnnModel.add(LSTM(RNN_HIDDEN_UNITS))
-        rnnModel.add(Dense(RNN_LAYER_UNITS, 'relu'))
-        rnnModel.add(Dense(1, 'linear'))
+            cp = ModelCheckpoint('model1/', save_best_only=True)
+            rnn_model.compile(loss=MeanSquaredError(), optimizer=Adam(self.learning_rate),
+                             metrics=[RootMeanSquaredError()])
+            rnn_model.fit(train_inputs, train_outputs,
+                         epochs=self.epochs, callbacks=[cp])
 
-        cp = ModelCheckpoint('model1/', save_best_only=True)
-        rnnModel.compile(loss=MeanSquaredError(), optimizer=Adam(RNN_LEARNING_RATE), metrics=[RootMeanSquaredError()])
-        rnnModel.fit(train_inputs, train_outputs,
-                     epochs=RNN_EPOCHS, callbacks=[cp])
+            test_predictions = rnn_model.predict(test_inputs).flatten()
+            train_predictions = rnn_model.predict(train_inputs).flatten()
 
-        test_predictions = rnnModel.predict(test_inputs).flatten()
-        train_predictions = rnnModel.predict(train_inputs).flatten()
+            plt.scatter(dataset['Timestamp'][:self.training_hours],
+                        original_variable_data[:self.training_hours].flatten(),
+                        color='black', label='Training Data', s=10)
 
-        plt.scatter(dataset['Timestamp'][:TRAINING_HOURS], original_variable_data[:TRAINING_HOURS].flatten(),
-                    color='black', label='Training Data', s=10)
+            test_predictions_2d = test_predictions.reshape(-1, 1)
+            train_predictions_2d = train_predictions.reshape(-1, 1)
 
-        test_predictions_2d = test_predictions.reshape(-1, 1)
-        train_predictions_2d = train_predictions.reshape(-1, 1)
+            plt.plot(dataset['Timestamp'][:self.training_hours + self.prediction_hours],
+                     scaler.inverse_transform(np.concatenate([train_predictions_2d, test_predictions_2d])),
+                     color='blue', label='Predicted')
 
-        plt.plot(dataset['Timestamp'][:TRAINING_HOURS + PREDICTION_HOURS],
-                 scaler.inverse_transform(np.concatenate([train_predictions_2d, test_predictions_2d])),
-                 color='blue', label='Predicted')
+            plt.scatter(dataset['Timestamp'][self.training_hours:self.training_hours + self.prediction_hours],
+                        scaler.inverse_transform(test_outputs),
+                        color='red', label='Actual', s=10)
 
-        plt.scatter(dataset['Timestamp'][TRAINING_HOURS:TRAINING_HOURS + PREDICTION_HOURS],
-                    scaler.inverse_transform(test_outputs),
-                    color='red', label='Actual', s=10)
-
-        plt.xlabel('ds')
-        plt.ylabel('y')
-        plt.title(f"Forecast for {variable}")
-        plt.legend()
-        plt.show()
+            plt.xlabel('ds')
+            plt.ylabel('y')
+            plt.title(f"Forecast for {variable}")
+            plt.legend()
+            plt.savefig(f"plots/{variable}.png")
+            plt.close()
