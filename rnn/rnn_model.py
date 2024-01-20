@@ -8,6 +8,8 @@ from tensorflow.keras.callbacks import ModelCheckpoint
 from tensorflow.keras.metrics import RootMeanSquaredError
 from tensorflow.keras.optimizers import Adam
 
+from utils import check_for_air_temperature_disease, check_for_air_humidity_disease
+
 
 class RnnModel:
     def __init__(self, training_hours, prediction_hours, hidden_units, layer_units, learning_rate, epochs, window):
@@ -31,54 +33,65 @@ class RnnModel:
 
         return np.array(inputs), np.array(expected_outputs)
 
-    def make_predictions(self, dataset):
+    def make_predictions(self, dataset, variable):
         variables_to_plot = [col for col in dataset.columns if col != 'Timestamp']
-        for variable in variables_to_plot:
-            original_variable_data = dataset[variable].copy()
-            original_variable_data = original_variable_data.values.reshape(-1, 1)
 
-            scaler = MinMaxScaler()
-            variable_data = scaler.fit_transform(original_variable_data)
+        if variable not in variables_to_plot:
+            return
 
-            inputs, expected_outputs = self._data_loader(variable_data)
+        original_variable_data = dataset[variable].copy()
+        original_variable_data = original_variable_data.values.reshape(-1, 1)
 
-            train_inputs, train_outputs = inputs[:self.training_hours], expected_outputs[:self.training_hours]
-            test_inputs = inputs[self.training_hours:(self.training_hours + self.prediction_hours)]
-            test_outputs = expected_outputs[self.training_hours:(self.training_hours + self.prediction_hours)]
+        scaler = MinMaxScaler()
+        variable_data = scaler.fit_transform(original_variable_data)
 
-            rnn_model = Sequential()
-            rnn_model.add(InputLayer((self.window, 1)))
-            rnn_model.add(LSTM(self.hidden_units))
-            rnn_model.add(Dense(self.layer_units, 'relu'))
-            rnn_model.add(Dense(1, 'linear'))
+        inputs, expected_outputs = self._data_loader(variable_data)
 
-            cp = ModelCheckpoint('model1/', save_best_only=True)
-            rnn_model.compile(loss=MeanSquaredError(), optimizer=Adam(self.learning_rate),
-                             metrics=[RootMeanSquaredError()])
-            rnn_model.fit(train_inputs, train_outputs,
-                         epochs=self.epochs, callbacks=[cp])
+        train_inputs, train_outputs = inputs[:self.training_hours], expected_outputs[:self.training_hours]
+        test_inputs = inputs[self.training_hours:(self.training_hours + self.prediction_hours)]
+        test_outputs = expected_outputs[self.training_hours:(self.training_hours + self.prediction_hours)]
 
-            test_predictions = rnn_model.predict(test_inputs).flatten()
-            train_predictions = rnn_model.predict(train_inputs).flatten()
+        rnn_model = Sequential()
+        rnn_model.add(InputLayer((self.window, 1)))
+        rnn_model.add(LSTM(self.hidden_units))
+        rnn_model.add(Dense(self.layer_units, 'relu'))
+        rnn_model.add(Dense(1, 'linear'))
 
-            plt.scatter(dataset['Timestamp'][:self.training_hours],
-                        original_variable_data[:self.training_hours].flatten(),
-                        color='black', label='Training Data', s=10)
+        cp = ModelCheckpoint('model1/', save_best_only=True)
+        rnn_model.compile(loss=MeanSquaredError(), optimizer=Adam(self.learning_rate), metrics=[RootMeanSquaredError()])
+        rnn_model.fit(train_inputs, train_outputs, epochs=self.epochs, callbacks=[cp])
 
-            test_predictions_2d = test_predictions.reshape(-1, 1)
-            train_predictions_2d = train_predictions.reshape(-1, 1)
+        test_predictions = rnn_model.predict(test_inputs).flatten()
+        train_predictions = rnn_model.predict(train_inputs).flatten()
 
-            plt.plot(dataset['Timestamp'][:self.training_hours + self.prediction_hours],
-                     scaler.inverse_transform(np.concatenate([train_predictions_2d, test_predictions_2d])),
-                     color='blue', label='Predicted')
+        plt.scatter(dataset['Timestamp'][:self.training_hours],
+                    original_variable_data[:self.training_hours].flatten(),
+                    color='black', label='Training Data', s=10)
 
-            plt.scatter(dataset['Timestamp'][self.training_hours:self.training_hours + self.prediction_hours],
-                        scaler.inverse_transform(test_outputs),
-                        color='red', label='Actual', s=10)
+        test_predictions_2d = test_predictions.reshape(-1, 1)
+        train_predictions_2d = train_predictions.reshape(-1, 1)
 
-            plt.xlabel('ds')
-            plt.ylabel('y')
-            plt.title(f"Forecast for {variable}")
-            plt.legend()
-            plt.savefig(f"plots/{variable}.png")
-            plt.close()
+        plt.plot(dataset['Timestamp'][:self.training_hours + self.prediction_hours],
+                 scaler.inverse_transform(np.concatenate([train_predictions_2d, test_predictions_2d])),
+                 color='blue', label='Predicted')
+
+        plt.scatter(dataset['Timestamp'][self.training_hours:self.training_hours + self.prediction_hours],
+                    scaler.inverse_transform(test_outputs),
+                    color='red', label='Actual', s=10)
+
+        plt.xlabel('ds')
+        plt.ylabel('y')
+        plt.title(f"Forecast for {variable}")
+        plt.legend()
+        plt.savefig(f"plots/{variable}.png")
+        plt.close()
+
+        if variable == 'temp1' or variable == 'temp2':
+            predicted_temps = scaler.inverse_transform(np.concatenate([train_predictions_2d, test_predictions_2d]))
+            mean_temp = sum(predicted_temps) / len(predicted_temps)
+            return check_for_air_temperature_disease(mean_temp)
+
+        if variable == 'umid':
+            predicted_temps = scaler.inverse_transform(np.concatenate([train_predictions_2d, test_predictions_2d]))
+            mean_temp = sum(predicted_temps) / len(predicted_temps)
+            return check_for_air_humidity_disease(mean_temp)
