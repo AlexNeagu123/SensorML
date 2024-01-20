@@ -1,6 +1,10 @@
 import pandas as pd
 
-from prophet_func import *
+from prophet_predictions.prophet_model import make_predictions as prophet_predict
+
+
+# from prophet_predictions.prophet_model import *
+from rnn.rnn_model import make_predictions as rnn_predict
 
 
 def main():
@@ -9,8 +13,8 @@ def main():
     # heatmaps(dataset)
     # create_box_plots(dataset)
     # correlation_matrix(dataset)
-    make_predictions(dataset)
-    # cross_validate(dataset, initial=168, period=24, horizon=48)
+    # prophet_predict(dataset)
+    rnn_predict(dataset, 5)
 
 
 if __name__ == '__main__':
