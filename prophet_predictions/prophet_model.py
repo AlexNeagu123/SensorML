@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 
 from prophet import Prophet
 from prophet.diagnostics import cross_validation, performance_metrics
+from utils import *
 
 
 class ProphetModel:
@@ -9,26 +10,39 @@ class ProphetModel:
         self.training_hours = training_hours
         self.prediction_hours = prediction_hours
 
-    def make_predictions(self, dataset):
+    def make_predictions(self, dataset, variable):
         variables_to_plot = [col for col in dataset.columns if col != 'Timestamp']
-        for variable in variables_to_plot:
-            variable_data = dataset[['Timestamp', variable]].copy()
-            variable_data.columns = ['ds', 'y']
 
-            model = Prophet()
-            model.fit(variable_data.head(self.training_hours))
+        if variable not in variables_to_plot:
+            return
 
-            future = model.make_future_dataframe(periods=self.prediction_hours, freq='h')
-            forecast = model.predict(future)
-            model.plot(forecast)
+        variable_data = dataset[['Timestamp', variable]].copy()
+        variable_data.columns = ['ds', 'y']
 
-            plt.scatter(variable_data['ds'][self.training_hours:self.training_hours + self.prediction_hours],
-                        variable_data['y'][self.training_hours:self.training_hours + self.prediction_hours],
-                        color='red', s=10)
+        model = Prophet()
+        model.fit(variable_data.head(self.training_hours))
 
-            plt.title(f"Forecast for {variable}")
-            plt.savefig(f"plots/{variable}.png")
-            plt.close()
+        future = model.make_future_dataframe(periods=self.prediction_hours, freq='h')
+        forecast = model.predict(future)
+        model.plot(forecast)
+
+        plt.scatter(variable_data['ds'][self.training_hours:self.training_hours + self.prediction_hours],
+                    variable_data['y'][self.training_hours:self.training_hours + self.prediction_hours],
+                    color='red', s=10)
+
+        plt.title(f"Forecast for {variable}")
+        plt.savefig(f"plots/{variable}.png")
+        plt.close()
+
+        if variable == 'temp1' or variable == 'temp2':
+            predicted_temps = forecast['yhat'].tail(self.prediction_hours).tolist()
+            mean_temp = sum(predicted_temps) / len(predicted_temps)
+            return check_for_air_temperature_disease(mean_temp)
+
+        if variable == 'umid':
+            predicted_temps = forecast['yhat'].tail(self.prediction_hours).tolist()
+            mean_temp = sum(predicted_temps) / len(predicted_temps)
+            return check_for_air_humidity_disease(mean_temp)
 
 
 def cross_validate(dataset, initial, horizon, period):
