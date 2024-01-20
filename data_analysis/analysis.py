@@ -12,7 +12,8 @@ def correlation_matrix(dataset):
                 cbar_kws={"shrink": .5})
 
     plt.title('Correlation Matrix Heatmap')
-    plt.show()
+    plt.savefig('plots/cor_matrix.png')
+    plt.close()
 
 
 def create_box_plots(dataset):
@@ -31,7 +32,8 @@ def create_box_plots(dataset):
         plt.title(f'Boxplot of "{variable}"')
 
     plt.tight_layout()
-    plt.show()
+    plt.savefig('plots/box_plots.png')
+    plt.close()
 
 
 def heatmaps(dataset):

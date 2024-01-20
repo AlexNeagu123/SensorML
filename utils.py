@@ -6,7 +6,7 @@ class Disease(Enum):
     GRAY_MOLD = auto()
     LATE_BLIGHT = auto()
     LEAF_MOLD = auto()
-    POWERDERY_MILDEW = auto()
+    POWDERY_MILDEW = auto()
 
     def __repr__(self):
         return self.name
@@ -26,7 +26,7 @@ def check_for_air_temperature_disease(air_temperature):
     if 21 <= air_temperature <= 24:
         diseases.append(Disease.LEAF_MOLD)
     if 22 <= air_temperature <= 30:
-        diseases.append(Disease.POWERDERY_MILDEW)
+        diseases.append(Disease.POWDERY_MILDEW)
 
     return diseases
 
@@ -38,6 +38,6 @@ def check_for_air_humidity_disease(air_humidity):
     if 85 <= air_humidity <= 100:
         diseases.append(Disease.LEAF_MOLD)
     if 50 <= air_humidity <= 75:
-        diseases.append(Disease.POWERDERY_MILDEW)
+        diseases.append(Disease.POWDERY_MILDEW)
 
     return diseases

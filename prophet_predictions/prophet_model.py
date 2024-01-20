@@ -31,7 +31,7 @@ class ProphetModel:
                     color='red', s=10)
 
         plt.title(f"Forecast for {variable}")
-        plt.savefig(f"plots/{variable}.png")
+        plt.savefig(f"plots/plot.png")
         plt.close()
 
         if variable == 'temp1' or variable == 'temp2':

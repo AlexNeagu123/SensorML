@@ -83,7 +83,7 @@ class RnnModel:
         plt.ylabel('y')
         plt.title(f"Forecast for {variable}")
         plt.legend()
-        plt.savefig(f"plots/{variable}.png")
+        plt.savefig(f"plots/plot.png")
         plt.close()
 
         if variable == 'temp1' or variable == 'temp2':
