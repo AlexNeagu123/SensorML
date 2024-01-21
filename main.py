@@ -16,12 +16,12 @@ def main():
     # prophet_model = ProphetModel(TRAINING_HOURS, PREDICTION_HOURS)
     # prophet_model.make_predictions(dataset, 'temp1')
 
-    rnn_model = RnnModel(TRAINING_HOURS, PREDICTION_HOURS, RNN_HIDDEN_UNITS, RNN_LAYER_UNITS, RNN_LEARNING_RATE, RNN_EPOCHS, 5)
-    print(rnn_model.make_predictions(dataset, 'B500'))
+    # rnn_model = RnnModel(TRAINING_HOURS, PREDICTION_HOURS, RNN_HIDDEN_UNITS, RNN_LAYER_UNITS, RNN_LEARNING_RATE, RNN_EPOCHS, 5)
+    # print(rnn_model.make_predictions(dataset, 'B500'))
 
-    # seq2seq_model = Seq2SeqModel(TRAINING_HOURS, PREDICTION_HOURS, RNN_HIDDEN_UNITS, RNN_LAYER_UNITS, RNN_LEARNING_RATE,
-    #                              RNN_EPOCHS, 5, 3)
-    # seq2seq_model.make_predictions(dataset, 'temp1')
+    seq2seq_model = Seq2SeqModel(TRAINING_HOURS, PREDICTION_HOURS, RNN_HIDDEN_UNITS, RNN_LAYER_UNITS, RNN_LEARNING_RATE,
+                                 RNN_EPOCHS, 5, 3)
+    seq2seq_model.make_predictions(dataset, 'temp1')
 
 
 if __name__ == '__main__':

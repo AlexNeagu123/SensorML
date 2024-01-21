@@ -7,9 +7,10 @@ from imgur_python import Imgur
 
 from prophet_predictions.prophet_model import ProphetModel
 from rnn.rnn_model import RnnModel
+from seq2seq.seq2seq_model import Seq2SeqModel
 
 app = Flask(__name__)
-allowed_types = ['prophet', 'rnn']
+allowed_types = ['prophet', 'rnn', 'seq2seq']
 allowed_variables = ["Timestamp", 'temp1', 'pres', 'umid', 'temp2', 'V450', 'B500', 'G550', 'Y570', 'O600', 'R650',
                      'temps1', 'temps2', 'lumina']
 
@@ -22,7 +23,6 @@ def hello_world():
 @app.route('/box-plots', methods=['GET'])
 def get_boxplots():
     try:
-
         dataset = pd.read_csv("dataset/SensorMLDataset.csv")
         dataset['Timestamp'] = pd.to_datetime(dataset['Timestamp'])
         create_box_plots(dataset)
@@ -36,7 +36,6 @@ def get_boxplots():
 @app.route('/correlation-matrix', methods=['GET'])
 def get_correlation_matrix():
     try:
-
         dataset = pd.read_csv("dataset/SensorMLDataset.csv")
         dataset['Timestamp'] = pd.to_datetime(dataset['Timestamp'])
         correlation_matrix(dataset)
@@ -61,27 +60,30 @@ def get_predict(type_predict, training_hours, prediction_hours, variable_name):
     return {'ok': True, 'link': image_url, 'diseases': str(diseases)}
 
 
-def make_predictions(type, training_hours, prediction_hours, variable_name):
+def make_predictions(model_type, training_hours, prediction_hours, variable_name):
     dataset = pd.read_csv("dataset/SensorMLDataset.csv")
     dataset['Timestamp'] = pd.to_datetime(dataset['Timestamp'])
 
-    if type == 'prophet':
+    if model_type == 'prophet':
         model = ProphetModel(training_hours, prediction_hours)
-    elif type == 'rnn':
+    elif model_type == 'rnn':
         model = RnnModel(TRAINING_HOURS, PREDICTION_HOURS, RNN_HIDDEN_UNITS, RNN_LAYER_UNITS, RNN_LEARNING_RATE,
                          RNN_EPOCHS, 5)
+    elif model_type == 'seq2seq':
+        model = Seq2SeqModel(TRAINING_HOURS, PREDICTION_HOURS, RNN_HIDDEN_UNITS, RNN_LAYER_UNITS, RNN_LEARNING_RATE,
+                             RNN_EPOCHS, 5, 3)
     else:
         model = ProphetModel(training_hours, prediction_hours)
 
     return model.make_predictions(dataset, variable_name)
 
 
-def get_link_predict(type):
+def get_link_predict(plot_type):
     imgur_client = Imgur({'client_id': IMGUR_CLIENT_ID})
-    if type == 'boxplots':
+    if plot_type == 'boxplots':
         iamge_url = imgur_client.image_upload('plots/box_plots.png', title='Box Plots',
                                               description='Box Plots')['response']['data']['link']
-    elif type == 'correlation-matrix':
+    elif plot_type == 'correlation-matrix':
         iamge_url = imgur_client.image_upload('plots/cor_matrix.png', title='Correlation Matrix',
                                               description='Correlation Matrix')['response']['data']['link']
     else:

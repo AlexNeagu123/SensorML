@@ -77,6 +77,8 @@ class Seq2SeqModel:
         test_predictions_2d = test_predictions.reshape(-1, 1)
         train_predictions_2d = train_predictions.reshape(-1, 1)
 
+        plt.figure(figsize=(12, 6))
+
         plt.scatter(dataset['Timestamp'][:self.training_hours],
                     original_variable_data[:self.training_hours].flatten(),
                     color='black', label='Training Data', s=10)
@@ -93,5 +95,6 @@ class Seq2SeqModel:
         plt.ylabel('y')
         plt.title(f"Forecast for {variable}")
         plt.legend()
-        plt.savefig(f"plots/plot.png")
+        plt.xticks(rotation=-90)
+        plt.savefig(f"plots/plot.png", bbox_inches='tight', pad_inches=0.1)
         plt.close()
