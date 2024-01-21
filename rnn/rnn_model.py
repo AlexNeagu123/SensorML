@@ -31,7 +31,7 @@ class RnnModel:
 
         return np.array(inputs), np.array(expected_outputs)
 
-    def build_model(self):
+    def _build_model(self):
         model = Sequential()
         model.add(InputLayer((self.window, 1)))
         model.add(LSTM(self.hidden_units))
@@ -59,7 +59,7 @@ class RnnModel:
         test_inputs = inputs[self.training_hours:(self.training_hours + self.prediction_hours)]
         test_outputs = expected_outputs[self.training_hours:(self.training_hours + self.prediction_hours)]
 
-        rnn_model = self.build_model()
+        rnn_model = self._build_model()
         rnn_model.fit(train_inputs, train_outputs, epochs=self.epochs, callbacks=[ModelCheckpoint('models/',
                                                                                                   save_best_only=True)])
 
