@@ -1,5 +1,5 @@
 import numpy as np
-from matplotlib import pyplot as plt
+from matplotlib import pyplot as plt, dates
 from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import *
@@ -21,17 +21,25 @@ class RnnModel:
         self.epochs = epochs
         self.window = window
 
-    def _data_loader(self, df_as_np):
-        # df_as_np = df.to_numpy()
+    def _data_loader(self, df):
         inputs = list()
         expected_outputs = list()
 
-        for i in range(len(df_as_np) - self.window):
-            row = [[a] for a in df_as_np[i:i + self.window]]
-            inputs.append(row)
-            expected_outputs.append(df_as_np[i + self.window])
+        for i in range(len(df) - self.window):
+            inputs.append(df[i:i+self.window])
+            expected_outputs.append(df[i + self.window])
 
         return np.array(inputs), np.array(expected_outputs)
+
+    def build_model(self):
+        model = Sequential()
+        model.add(InputLayer((self.window, 1)))
+        model.add(LSTM(self.hidden_units))
+        model.add(Dense(self.layer_units, 'relu'))
+        model.add(Dense(1, 'linear'))
+
+        model.compile(loss=MeanSquaredError(), optimizer=Adam(self.learning_rate), metrics=[RootMeanSquaredError()])
+        return model
 
     def make_predictions(self, dataset, variable):
         variables_to_plot = [col for col in dataset.columns if col != 'Timestamp']
@@ -51,15 +59,9 @@ class RnnModel:
         test_inputs = inputs[self.training_hours:(self.training_hours + self.prediction_hours)]
         test_outputs = expected_outputs[self.training_hours:(self.training_hours + self.prediction_hours)]
 
-        rnn_model = Sequential()
-        rnn_model.add(InputLayer((self.window, 1)))
-        rnn_model.add(LSTM(self.hidden_units))
-        rnn_model.add(Dense(self.layer_units, 'relu'))
-        rnn_model.add(Dense(1, 'linear'))
-
-        cp = ModelCheckpoint('model1/', save_best_only=True)
-        rnn_model.compile(loss=MeanSquaredError(), optimizer=Adam(self.learning_rate), metrics=[RootMeanSquaredError()])
-        rnn_model.fit(train_inputs, train_outputs, epochs=self.epochs, callbacks=[cp])
+        rnn_model = self.build_model()
+        rnn_model.fit(train_inputs, train_outputs, epochs=self.epochs, callbacks=[ModelCheckpoint('models/',
+                                                                                                  save_best_only=True)])
 
         test_predictions = rnn_model.predict(test_inputs).flatten()
         train_predictions = rnn_model.predict(train_inputs).flatten()
