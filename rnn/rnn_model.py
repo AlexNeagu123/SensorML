@@ -64,6 +64,8 @@ class RnnModel:
         test_predictions = rnn_model.predict(test_inputs).flatten()
         train_predictions = rnn_model.predict(train_inputs).flatten()
 
+        plt.figure(figsize=(12, 6))
+
         plt.scatter(dataset['Timestamp'][:self.training_hours],
                     original_variable_data[:self.training_hours].flatten(),
                     color='black', label='Training Data', s=10)
@@ -83,7 +85,8 @@ class RnnModel:
         plt.ylabel('y')
         plt.title(f"Forecast for {variable}")
         plt.legend()
-        plt.savefig(f"plots/plot.png")
+        plt.xticks(rotation=-90)
+        plt.savefig(f"plots/plot.png", bbox_inches='tight', pad_inches=0.1)
         plt.close()
 
         if variable == 'temp1' or variable == 'temp2':
