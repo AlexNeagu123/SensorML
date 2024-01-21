@@ -2,6 +2,8 @@ import matplotlib.pyplot as plt
 
 from prophet import Prophet
 from prophet.diagnostics import cross_validation, performance_metrics
+from sklearn.metrics import mean_squared_error
+
 from utils import *
 
 
@@ -19,6 +21,8 @@ class ProphetModel:
         variable_data = dataset[['Timestamp', variable]].copy()
         variable_data.columns = ['ds', 'y']
 
+        actual_values = variable_data['y'][self.training_hours:self.training_hours+self.prediction_hours].values
+
         model = Prophet()
         model.fit(variable_data.head(self.training_hours))
 
@@ -26,8 +30,11 @@ class ProphetModel:
         forecast = model.predict(future)
         model.plot(forecast)
 
-        plt.scatter(variable_data['ds'][self.training_hours:self.training_hours + self.prediction_hours],
-                    variable_data['y'][self.training_hours:self.training_hours + self.prediction_hours],
+        predicted_values = forecast['yhat'].tail(self.prediction_hours).tolist()
+        testing_error = mean_squared_error(actual_values, predicted_values)
+
+        plt.scatter(variable_data['ds'][self.training_hours:self.training_hours+self.prediction_hours],
+                    variable_data['y'][self.training_hours:self.training_hours+self.prediction_hours],
                     color='red', s=10)
 
         plt.title(f"Forecast for {variable}")
@@ -37,12 +44,14 @@ class ProphetModel:
         if variable == 'temp1' or variable == 'temp2':
             predicted_temps = forecast['yhat'].tail(self.prediction_hours).tolist()
             mean_temp = sum(predicted_temps) / len(predicted_temps)
-            return check_for_air_temperature_disease(mean_temp)
+            return check_for_air_temperature_disease(mean_temp), testing_error
 
         if variable == 'umid':
             predicted_temps = forecast['yhat'].tail(self.prediction_hours).tolist()
             mean_temp = sum(predicted_temps) / len(predicted_temps)
-            return check_for_air_humidity_disease(mean_temp)
+            return check_for_air_humidity_disease(mean_temp), testing_error
+
+        return [], testing_error
 
 
 def cross_validate(dataset, initial, horizon, period):

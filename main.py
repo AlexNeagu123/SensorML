@@ -13,15 +13,15 @@ def main():
     # correlation_matrix(dataset)
     # create_box_plots(dataset)
     # prophet_model = ProphetModel(TRAINING_HOURS, PREDICTION_HOURS)
-    # prophet_model.make_predictions(dataset, 'pres')
+    # print(prophet_model.make_predictions(dataset, 'temp1'))
 
-    # rnn_model = RnnModel(TRAINING_HOURS, PREDICTION_HOURS, RNN_HIDDEN_UNITS, RNN_LAYER_UNITS, RNN_LEARNING_RATE,
-    #                      RNN_EPOCHS, 24, autoregressive=False)
-    # print(rnn_model.make_predictions(dataset, 'pres'))
+    rnn_model = RnnModel(TRAINING_HOURS, PREDICTION_HOURS, RNN_HIDDEN_UNITS, RNN_LAYER_UNITS, RNN_LEARNING_RATE,
+                         RNN_EPOCHS, 24, autoregressive=True)
+    print(rnn_model.make_predictions(dataset, 'temp1')[1])
 
-    seq2seq_model = Seq2SeqModel(TRAINING_HOURS, PREDICTION_HOURS, RNN_HIDDEN_UNITS, RNN_LAYER_UNITS, RNN_LEARNING_RATE,
-                                 RNN_EPOCHS, 24, 12, autoregressive=True)
-    seq2seq_model.make_predictions(dataset, 'pres')
+    # seq2seq_model = Seq2SeqModel(TRAINING_HOURS, PREDICTION_HOURS, RNN_HIDDEN_UNITS, RNN_LAYER_UNITS, RNN_LEARNING_RATE,
+    #                              RNN_EPOCHS, 24, 12, autoregressive=False)
+    # seq2seq_model.make_predictions(dataset, 'pres')
 
 
 if __name__ == '__main__':

@@ -1,5 +1,5 @@
 import numpy as np
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import mean_squared_error
 from tensorflow.keras.callbacks import ModelCheckpoint
 from tensorflow.keras.layers import *
 from tensorflow.keras.layers import Input, Dense, LSTM
@@ -45,7 +45,7 @@ class Seq2SeqModel(NnModel):
         return model
 
     def get_test_predictions(self, model, enc_train_inputs, dec_train_inputs,
-                             enc_test_inputs, dec_test_inputs):
+                             enc_test_inputs, dec_test_inputs, original_variable_data, expected_outputs):
         test_predictions = []
         if self.autoregressive:
             first_enc_batch = enc_train_inputs[-1]
@@ -59,10 +59,14 @@ class Seq2SeqModel(NnModel):
                 test_predictions.append(current_prediction)
                 current_enc_batch = np.append(current_enc_batch[:, 1:, :], [[current_prediction]], axis=1)
                 current_dec_batch = np.append(current_dec_batch[:, 1:, :], [[current_prediction]], axis=1)
+            actual_testing_values = original_variable_data[self.training_hours:self.training_hours+self.prediction_hours]
         else:
             test_predictions = model.predict([enc_test_inputs, dec_test_inputs])
+            actual_testing_values = self.scaler.inverse_transform(
+                expected_outputs[self.training_hours:self.training_hours+self.prediction_hours])
 
-        return test_predictions
+        testing_error = mean_squared_error(self.scaler.inverse_transform(test_predictions), actual_testing_values)
+        return test_predictions, testing_error
 
     def make_predictions(self, dataset, variable):
         variables_to_plot = [col for col in dataset.columns if col != 'Timestamp']
@@ -85,9 +89,10 @@ class Seq2SeqModel(NnModel):
         seq2seq_model.fit([enc_train_inputs, dec_train_inputs], train_outputs,
                           epochs=self.epochs, callbacks=[ModelCheckpoint('models/', save_best_only=True)])
 
-        test_predictions = self.get_test_predictions(seq2seq_model, enc_train_inputs, dec_train_inputs,
-                                                     enc_test_inputs, dec_test_inputs)
+        test_predictions, testing_error = self.get_test_predictions(seq2seq_model, enc_train_inputs, dec_train_inputs,
+                                                                    enc_test_inputs, dec_test_inputs,
+                                                                    original_variable_data, expected_outputs)
 
         train_predictions = seq2seq_model.predict([enc_train_inputs, dec_train_inputs])
 
-        return self._make_plot(dataset, original_variable_data, test_predictions, train_predictions, variable)
+        return self._make_plot(dataset, original_variable_data, test_predictions, train_predictions, variable), testing_error

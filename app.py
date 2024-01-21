@@ -4,9 +4,9 @@ from data_analysis.analysis import correlation_matrix, create_box_plots
 from globals import *
 from flask import Flask
 
+from nn_predictions.rnn_model import RnnModel
+from nn_predictions.seq2seq_model import Seq2SeqModel
 from prophet_predictions.prophet_model import ProphetModel
-from rnn.rnn_model import RnnModel
-from seq2seq.seq2seq_model import Seq2SeqModel
 
 app = Flask(__name__)
 allowed_types = ['prophet', 'rnn_auto', 'rnn', 'seq2seq', 'seq2seq_auto']
@@ -52,11 +52,11 @@ def get_predict(type_predict, training_hours, prediction_hours, variable_name):
     if variable_name not in allowed_variables:
         return {'ok': False, 'error': 'Invalid variable name'}
     try:
-        diseases = make_predictions(type_predict, int(training_hours), int(prediction_hours), variable_name)
+        prediction_result = make_predictions(type_predict, int(training_hours), int(prediction_hours), variable_name)
         image_url = get_link_predict("plot")
     except Exception as e:
         return {'ok': False, 'error': str(e)}
-    return {'ok': True, 'link': image_url, 'diseases': str(diseases)}
+    return {'ok': True, 'link': image_url, 'diseases': str(prediction_result[0]), 'testing_error': prediction_result[1]}
 
 
 def make_predictions(model_type, training_hours, prediction_hours, variable_name):

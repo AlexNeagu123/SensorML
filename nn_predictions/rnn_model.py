@@ -7,6 +7,7 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.optimizers import Adam
 
 from nn_predictions.nn_model import NnModel
+from sklearn.metrics import mean_squared_error
 
 
 class RnnModel(NnModel):
@@ -21,8 +22,8 @@ class RnnModel(NnModel):
         expected_outputs = list()
 
         for i in range(len(df) - self.window):
-            inputs.append(df[i:i + self.window])
-            expected_outputs.append(df[i + self.window])
+            inputs.append(df[i:i+self.window])
+            expected_outputs.append(df[i+self.window])
 
         return np.array(inputs), np.array(expected_outputs)
 
@@ -36,19 +37,24 @@ class RnnModel(NnModel):
         model.compile(loss=MeanSquaredError(), optimizer=Adam(self.learning_rate), metrics=[RootMeanSquaredError()])
         return model
 
-    def get_test_predictions(self, model, train_inputs, test_inputs):
+    def get_test_predictions(self, model, train_inputs, test_inputs, original_variable_data, expected_outputs):
         test_predictions = list()
+
         if self.autoregressive:
             first_batch = train_inputs[-1]
             current_batch = first_batch.reshape((1, self.window, 1))
+
             for i in range(self.prediction_hours):
                 current_prediction = model.predict(current_batch)[0]
                 test_predictions.append(current_prediction)
                 current_batch = np.append(current_batch[:, 1:, :], [[current_prediction]], axis=1)
+            actual_testing_values = original_variable_data[self.training_hours:self.training_hours+self.prediction_hours]
         else:
             test_predictions = model.predict(test_inputs)
+            actual_testing_values = self.scaler.inverse_transform(expected_outputs[self.training_hours:self.training_hours+self.prediction_hours])
 
-        return test_predictions
+        testing_error = mean_squared_error(self.scaler.inverse_transform(test_predictions), actual_testing_values)
+        return test_predictions, testing_error
 
     def make_predictions(self, dataset, variable):
         variables_to_plot = [col for col in dataset.columns if col != 'Timestamp']
@@ -64,13 +70,14 @@ class RnnModel(NnModel):
         inputs, expected_outputs = self._data_loader(variable_data)
 
         train_inputs, train_outputs = inputs[:self.training_hours], expected_outputs[:self.training_hours]
-        test_inputs = inputs[self.training_hours:(self.training_hours + self.prediction_hours)]
+        test_inputs = inputs[self.training_hours:self.training_hours+self.prediction_hours]
 
         rnn_model = self._build_model()
         rnn_model.fit(train_inputs, train_outputs, epochs=self.epochs, callbacks=[ModelCheckpoint('models/',
                                                                                                   save_best_only=True)])
 
-        test_predictions = self.get_test_predictions(rnn_model, train_inputs, test_inputs)
+        test_predictions, training_error = self.get_test_predictions(rnn_model, train_inputs, test_inputs,
+                                                                     original_variable_data, expected_outputs)
         train_predictions = rnn_model.predict(train_inputs).flatten()
 
-        return self._make_plot(dataset, original_variable_data, test_predictions, train_predictions, variable)
+        return self._make_plot(dataset, original_variable_data, test_predictions, train_predictions, variable), training_error
