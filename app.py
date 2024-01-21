@@ -54,9 +54,10 @@ def get_predict(type_predict, training_hours, prediction_hours, variable_name):
     try:
         prediction_result = make_predictions(type_predict, int(training_hours), int(prediction_hours), variable_name)
         image_url = get_link_predict("plot")
+        return {'ok': True, 'link': image_url, 'diseases': [str(x) for x in prediction_result[0]],
+                'testing_error': prediction_result[1]}
     except Exception as e:
         return {'ok': False, 'error': str(e)}
-    return {'ok': True, 'link': image_url, 'diseases': [str(x) for x in prediction_result[0]], 'testing_error': prediction_result[1]}
 
 
 def make_predictions(model_type, training_hours, prediction_hours, variable_name):
@@ -67,16 +68,16 @@ def make_predictions(model_type, training_hours, prediction_hours, variable_name
         model = ProphetModel(training_hours, prediction_hours)
     elif model_type == 'rnn_auto':
         model = RnnModel(training_hours, prediction_hours, RNN_HIDDEN_UNITS, RNN_LAYER_UNITS, RNN_LEARNING_RATE,
-                         RNN_EPOCHS, 5, True)
+                         RNN_EPOCHS, 24, True)
     elif model_type == 'rnn':
         model = RnnModel(training_hours, prediction_hours, RNN_HIDDEN_UNITS, RNN_LAYER_UNITS, RNN_LEARNING_RATE,
-                         RNN_EPOCHS, 5, False)
+                         RNN_EPOCHS, 24, False)
     elif model_type == 'seq2seq_auto':
         model = Seq2SeqModel(training_hours, prediction_hours, RNN_HIDDEN_UNITS, RNN_LAYER_UNITS, RNN_LEARNING_RATE,
-                             RNN_EPOCHS, 5, 3, True)
+                             RNN_EPOCHS, 24, 12, True)
     elif model_type == 'seq2seq':
         model = Seq2SeqModel(training_hours, prediction_hours, RNN_HIDDEN_UNITS, RNN_LAYER_UNITS, RNN_LEARNING_RATE,
-                             RNN_EPOCHS, 5, 3, False)
+                             RNN_EPOCHS, 24, 12, False)
     else:
         model = ProphetModel(training_hours, prediction_hours)
 

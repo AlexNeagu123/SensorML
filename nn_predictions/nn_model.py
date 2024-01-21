@@ -51,3 +51,5 @@ class NnModel:
             predicted_temps = self.scaler.inverse_transform(np.concatenate([train_predictions_2d, test_predictions_2d]))
             mean_temp = sum(predicted_temps) / len(predicted_temps)
             return check_for_air_humidity_disease(mean_temp)
+
+        return []
