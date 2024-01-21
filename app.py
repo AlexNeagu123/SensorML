@@ -2,7 +2,7 @@ import pandas as pd
 import requests
 from data_analysis.analysis import correlation_matrix, create_box_plots
 from globals import *
-from flask import Flask, send_file
+from flask import Flask
 
 from prophet_predictions.prophet_model import ProphetModel
 from rnn.rnn_model import RnnModel
@@ -98,6 +98,7 @@ def upload_image(file_path, title, description):
     else:
         print(f"Image upload failed. Status code: {response.status_code}")
         return None
+
 
 def get_link_predict(plot_type):
     if plot_type == 'boxplots':

@@ -1,28 +1,23 @@
 import numpy as np
-from tensorflow.keras.layers import Input, RNN, Dense, LSTM
-from tensorflow.keras.models import Model
-from tensorflow.keras.layers import *
-from tensorflow.keras.losses import MeanSquaredError
+from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras.callbacks import ModelCheckpoint
+from tensorflow.keras.layers import *
+from tensorflow.keras.layers import Input, Dense, LSTM
+from tensorflow.keras.losses import MeanSquaredError
 from tensorflow.keras.metrics import RootMeanSquaredError
+from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import Adam
 
-from matplotlib import pyplot as plt
-from sklearn.preprocessing import MinMaxScaler
+from nn_predictions.nn_model import NnModel
 
 
-class Seq2SeqModel:
+class Seq2SeqModel(NnModel):
     def __init__(self, training_hours, prediction_hours, hidden_units, layer_units, learning_rate, epochs, window_enc,
                  window_dec, autoregressive=False):
-        self.training_hours = training_hours
-        self.prediction_hours = prediction_hours
-        self.hidden_units = hidden_units
-        self.layer_units = layer_units
-        self.learning_rate = learning_rate
-        self.epochs = epochs
+        super().__init__(training_hours, prediction_hours, hidden_units, layer_units, learning_rate,
+                         epochs, autoregressive)
         self.window_enc = window_enc
         self.window_dec = window_dec
-        self.autoregressive = autoregressive
 
     def _data_loader(self, df):
         encoder_inputs, decoder_inputs, expected_outputs = [], [], []
@@ -77,8 +72,7 @@ class Seq2SeqModel:
         original_variable_data = dataset[variable].copy()
         original_variable_data = original_variable_data.values.reshape(-1, 1)
 
-        scaler = MinMaxScaler()
-        variable_data = scaler.fit_transform(original_variable_data)
+        variable_data = self.scaler.fit_transform(original_variable_data)
         encoder_inputs, decoder_inputs, expected_outputs = self._data_loader(variable_data)
 
         enc_train_inputs, dec_train_inputs = encoder_inputs[:self.training_hours], decoder_inputs[:self.training_hours]
@@ -86,8 +80,6 @@ class Seq2SeqModel:
         dec_test_inputs = decoder_inputs[self.training_hours:(self.training_hours + self.prediction_hours)]
 
         train_outputs = expected_outputs[:self.training_hours]
-        test_outputs = expected_outputs[self.training_hours:(self.training_hours + self.prediction_hours)]
-
         seq2seq_model = self._build_model()
 
         seq2seq_model.fit([enc_train_inputs, dec_train_inputs], train_outputs,
@@ -98,27 +90,4 @@ class Seq2SeqModel:
 
         train_predictions = seq2seq_model.predict([enc_train_inputs, dec_train_inputs])
 
-        test_predictions_2d = np.array(test_predictions).reshape(-1, 1)
-        train_predictions_2d = train_predictions.reshape(-1, 1)
-
-        plt.figure(figsize=(12, 6))
-
-        plt.scatter(dataset['Timestamp'][:self.training_hours],
-                    original_variable_data[:self.training_hours].flatten(),
-                    color='black', label='Training Data', s=10)
-
-        plt.plot(dataset['Timestamp'][:self.training_hours + self.prediction_hours],
-                 scaler.inverse_transform(np.concatenate([train_predictions_2d, test_predictions_2d])),
-                 color='blue', label='Predicted')
-
-        plt.scatter(dataset['Timestamp'][self.training_hours:self.training_hours + self.prediction_hours],
-                    scaler.inverse_transform(test_outputs).flatten(),
-                    color='red', label='Actual', s=10)
-
-        plt.xlabel('ds')
-        plt.ylabel('y')
-        plt.title(f"Forecast for {variable}")
-        plt.legend()
-        plt.xticks(rotation=-90)
-        plt.savefig(f"plots/plot.png", bbox_inches='tight', pad_inches=0.1)
-        plt.close()
+        return self._make_plot(dataset, original_variable_data, test_predictions, train_predictions, variable)
