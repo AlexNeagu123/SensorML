@@ -32,7 +32,7 @@ class Seq2SeqModel:
             expected_outputs.append(df[i + self.window_enc])
         return np.array(encoder_inputs), np.array(decoder_inputs), np.array(expected_outputs)
 
-    def build_model(self):
+    def _build_model(self):
         encoder_inputs = Input(shape=(self.window_enc, 1), name='encoder_input')
         lstm_encoder = LSTM(self.hidden_units, return_sequences=True, return_state=True, name='encoder_lstm')
         encoder_outputs, state_h, state_c = lstm_encoder(encoder_inputs)
@@ -88,7 +88,7 @@ class Seq2SeqModel:
         train_outputs = expected_outputs[:self.training_hours]
         test_outputs = expected_outputs[self.training_hours:(self.training_hours + self.prediction_hours)]
 
-        seq2seq_model = self.build_model()
+        seq2seq_model = self._build_model()
 
         seq2seq_model.fit([enc_train_inputs, dec_train_inputs], train_outputs,
                           epochs=self.epochs, callbacks=[ModelCheckpoint('models/', save_best_only=True)])
