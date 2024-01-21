@@ -1,3 +1,5 @@
+from math import sqrt
+
 import matplotlib.pyplot as plt
 
 from prophet import Prophet
@@ -31,7 +33,7 @@ class ProphetModel:
         model.plot(forecast)
 
         predicted_values = forecast['yhat'].tail(self.prediction_hours).tolist()
-        testing_error = mean_squared_error(actual_values, predicted_values)
+        testing_error = sqrt(mean_squared_error(actual_values, predicted_values))
 
         plt.scatter(variable_data['ds'][self.training_hours:self.training_hours+self.prediction_hours],
                     variable_data['y'][self.training_hours:self.training_hours+self.prediction_hours],

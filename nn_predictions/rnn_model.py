@@ -1,3 +1,5 @@
+from math import sqrt
+
 import numpy as np
 from tensorflow.keras.callbacks import ModelCheckpoint
 from tensorflow.keras.layers import *
@@ -53,7 +55,7 @@ class RnnModel(NnModel):
             test_predictions = model.predict(test_inputs)
             actual_testing_values = self.scaler.inverse_transform(expected_outputs[self.training_hours:self.training_hours+self.prediction_hours])
 
-        testing_error = mean_squared_error(self.scaler.inverse_transform(test_predictions), actual_testing_values)
+        testing_error = sqrt(mean_squared_error(self.scaler.inverse_transform(test_predictions), actual_testing_values))
         return test_predictions, testing_error
 
     def make_predictions(self, dataset, variable):

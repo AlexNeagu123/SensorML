@@ -7,8 +7,11 @@ from flask import Flask
 from nn_predictions.rnn_model import RnnModel
 from nn_predictions.seq2seq_model import Seq2SeqModel
 from prophet_predictions.prophet_model import ProphetModel
+from flask_cors import CORS
+
 
 app = Flask(__name__)
+CORS(app)
 allowed_types = ['prophet', 'rnn_auto', 'rnn', 'seq2seq', 'seq2seq_auto']
 allowed_variables = ["Timestamp", 'temp1', 'pres', 'umid', 'temp2', 'V450', 'B500', 'G550', 'Y570', 'O600', 'R650',
                      'temps1', 'temps2', 'lumina']
