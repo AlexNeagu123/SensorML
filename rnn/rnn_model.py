@@ -12,7 +12,8 @@ from utils import check_for_air_temperature_disease, check_for_air_humidity_dise
 
 
 class RnnModel:
-    def __init__(self, training_hours, prediction_hours, hidden_units, layer_units, learning_rate, epochs, window):
+    def __init__(self, training_hours, prediction_hours, hidden_units, layer_units,
+                 learning_rate, epochs, window, autoregressive=False):
         self.training_hours = training_hours
         self.prediction_hours = prediction_hours
         self.hidden_units = hidden_units
@@ -20,13 +21,14 @@ class RnnModel:
         self.learning_rate = learning_rate
         self.epochs = epochs
         self.window = window
+        self.autoregressive = autoregressive
 
     def _data_loader(self, df):
         inputs = list()
         expected_outputs = list()
 
         for i in range(len(df) - self.window):
-            inputs.append(df[i:i+self.window])
+            inputs.append(df[i:i + self.window])
             expected_outputs.append(df[i + self.window])
 
         return np.array(inputs), np.array(expected_outputs)
@@ -40,6 +42,20 @@ class RnnModel:
 
         model.compile(loss=MeanSquaredError(), optimizer=Adam(self.learning_rate), metrics=[RootMeanSquaredError()])
         return model
+
+    def get_test_predictions(self, model, train_inputs, test_inputs):
+        test_predictions = list()
+        if self.autoregressive:
+            first_batch = train_inputs[-1]
+            current_batch = first_batch.reshape((1, self.window, 1))
+            for i in range(self.prediction_hours):
+                current_prediction = model.predict(current_batch)[0]
+                test_predictions.append(current_prediction)
+                current_batch = np.append(current_batch[:, 1:, :], [[current_prediction]], axis=1)
+        else:
+            test_predictions = model.predict(test_inputs)
+
+        return test_predictions
 
     def make_predictions(self, dataset, variable):
         variables_to_plot = [col for col in dataset.columns if col != 'Timestamp']
@@ -63,16 +79,15 @@ class RnnModel:
         rnn_model.fit(train_inputs, train_outputs, epochs=self.epochs, callbacks=[ModelCheckpoint('models/',
                                                                                                   save_best_only=True)])
 
-        test_predictions = rnn_model.predict(test_inputs).flatten()
+        test_predictions = self.get_test_predictions(rnn_model, train_inputs, test_inputs)
         train_predictions = rnn_model.predict(train_inputs).flatten()
 
         plt.figure(figsize=(12, 6))
-
         plt.scatter(dataset['Timestamp'][:self.training_hours],
                     original_variable_data[:self.training_hours].flatten(),
                     color='black', label='Training Data', s=10)
 
-        test_predictions_2d = test_predictions.reshape(-1, 1)
+        test_predictions_2d = np.array(test_predictions).reshape(-1, 1)
         train_predictions_2d = train_predictions.reshape(-1, 1)
 
         plt.plot(dataset['Timestamp'][:self.training_hours + self.prediction_hours],

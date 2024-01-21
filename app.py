@@ -10,7 +10,7 @@ from rnn.rnn_model import RnnModel
 from seq2seq.seq2seq_model import Seq2SeqModel
 
 app = Flask(__name__)
-allowed_types = ['prophet', 'rnn', 'seq2seq']
+allowed_types = ['prophet', 'rnn_auto', 'rnn', 'seq2seq', 'seq2seq_auto']
 allowed_variables = ["Timestamp", 'temp1', 'pres', 'umid', 'temp2', 'V450', 'B500', 'G550', 'Y570', 'O600', 'R650',
                      'temps1', 'temps2', 'lumina']
 
@@ -66,12 +66,18 @@ def make_predictions(model_type, training_hours, prediction_hours, variable_name
 
     if model_type == 'prophet':
         model = ProphetModel(training_hours, prediction_hours)
+    elif model_type == 'rnn_auto':
+        model = RnnModel(TRAINING_HOURS, PREDICTION_HOURS, RNN_HIDDEN_UNITS, RNN_LAYER_UNITS, RNN_LEARNING_RATE,
+                         RNN_EPOCHS, 5, True)
     elif model_type == 'rnn':
         model = RnnModel(TRAINING_HOURS, PREDICTION_HOURS, RNN_HIDDEN_UNITS, RNN_LAYER_UNITS, RNN_LEARNING_RATE,
-                         RNN_EPOCHS, 5)
+                         RNN_EPOCHS, 5, False)
+    elif model_type == 'seq2seq_auto':
+        model = Seq2SeqModel(TRAINING_HOURS, PREDICTION_HOURS, RNN_HIDDEN_UNITS, RNN_LAYER_UNITS, RNN_LEARNING_RATE,
+                             RNN_EPOCHS, 5, 3, True)
     elif model_type == 'seq2seq':
         model = Seq2SeqModel(TRAINING_HOURS, PREDICTION_HOURS, RNN_HIDDEN_UNITS, RNN_LAYER_UNITS, RNN_LEARNING_RATE,
-                             RNN_EPOCHS, 5, 3)
+                             RNN_EPOCHS, 5, 3, False)
     else:
         model = ProphetModel(training_hours, prediction_hours)
 

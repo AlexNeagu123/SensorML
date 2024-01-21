@@ -12,7 +12,8 @@ from sklearn.preprocessing import MinMaxScaler
 
 
 class Seq2SeqModel:
-    def __init__(self, training_hours, prediction_hours, hidden_units, layer_units, learning_rate, epochs, window_enc, window_dec):
+    def __init__(self, training_hours, prediction_hours, hidden_units, layer_units, learning_rate, epochs, window_enc,
+                 window_dec, autoregressive=False):
         self.training_hours = training_hours
         self.prediction_hours = prediction_hours
         self.hidden_units = hidden_units
@@ -21,13 +22,14 @@ class Seq2SeqModel:
         self.epochs = epochs
         self.window_enc = window_enc
         self.window_dec = window_dec
+        self.autoregressive = autoregressive
 
     def _data_loader(self, df):
         encoder_inputs, decoder_inputs, expected_outputs = [], [], []
         for i in range(len(df) - self.window_enc - self.window_dec):
-            encoder_inputs.append(df[i:i+self.window_enc])
-            decoder_inputs.append(df[i+self.window_enc-self.window_dec:i+self.window_enc])
-            expected_outputs.append(df[i+self.window_enc])
+            encoder_inputs.append(df[i:i + self.window_enc])
+            decoder_inputs.append(df[i + self.window_enc - self.window_dec:i + self.window_enc])
+            expected_outputs.append(df[i + self.window_enc])
         return np.array(encoder_inputs), np.array(decoder_inputs), np.array(expected_outputs)
 
     def build_model(self):
@@ -47,6 +49,26 @@ class Seq2SeqModel:
         model.compile(loss=MeanSquaredError(), optimizer=Adam(self.learning_rate), metrics=[RootMeanSquaredError()])
         return model
 
+    def get_test_predictions(self, model, enc_train_inputs, dec_train_inputs,
+                             enc_test_inputs, dec_test_inputs):
+        test_predictions = []
+        if self.autoregressive:
+            first_enc_batch = enc_train_inputs[-1]
+            first_dec_batch = dec_train_inputs[-1]
+
+            current_enc_batch = first_enc_batch.reshape((1, self.window_enc, 1))
+            current_dec_batch = first_dec_batch.reshape((1, self.window_dec, 1))
+
+            for i in range(self.prediction_hours):
+                current_prediction = model.predict([current_enc_batch, current_dec_batch])[0]
+                test_predictions.append(current_prediction)
+                current_enc_batch = np.append(current_enc_batch[:, 1:, :], [[current_prediction]], axis=1)
+                current_dec_batch = np.append(current_dec_batch[:, 1:, :], [[current_prediction]], axis=1)
+        else:
+            test_predictions = model.predict([enc_test_inputs, dec_test_inputs])
+
+        return test_predictions
+
     def make_predictions(self, dataset, variable):
         variables_to_plot = [col for col in dataset.columns if col != 'Timestamp']
         if variable not in variables_to_plot:
@@ -60,21 +82,23 @@ class Seq2SeqModel:
         encoder_inputs, decoder_inputs, expected_outputs = self._data_loader(variable_data)
 
         enc_train_inputs, dec_train_inputs = encoder_inputs[:self.training_hours], decoder_inputs[:self.training_hours]
-        enc_test_inputs = encoder_inputs[self.training_hours:(self.training_hours+self.prediction_hours)]
-        dec_test_inputs = decoder_inputs[self.training_hours:(self.training_hours+self.prediction_hours)]
+        enc_test_inputs = encoder_inputs[self.training_hours:(self.training_hours + self.prediction_hours)]
+        dec_test_inputs = decoder_inputs[self.training_hours:(self.training_hours + self.prediction_hours)]
 
         train_outputs = expected_outputs[:self.training_hours]
-        test_outputs = expected_outputs[self.training_hours:(self.training_hours+self.prediction_hours)]
+        test_outputs = expected_outputs[self.training_hours:(self.training_hours + self.prediction_hours)]
 
         seq2seq_model = self.build_model()
 
         seq2seq_model.fit([enc_train_inputs, dec_train_inputs], train_outputs,
                           epochs=self.epochs, callbacks=[ModelCheckpoint('models/', save_best_only=True)])
 
-        test_predictions = seq2seq_model.predict([enc_test_inputs, dec_test_inputs])
+        test_predictions = self.get_test_predictions(seq2seq_model, enc_train_inputs, dec_train_inputs,
+                                                     enc_test_inputs, dec_test_inputs)
+
         train_predictions = seq2seq_model.predict([enc_train_inputs, dec_train_inputs])
 
-        test_predictions_2d = test_predictions.reshape(-1, 1)
+        test_predictions_2d = np.array(test_predictions).reshape(-1, 1)
         train_predictions_2d = train_predictions.reshape(-1, 1)
 
         plt.figure(figsize=(12, 6))
@@ -83,11 +107,11 @@ class Seq2SeqModel:
                     original_variable_data[:self.training_hours].flatten(),
                     color='black', label='Training Data', s=10)
 
-        plt.plot(dataset['Timestamp'][:self.training_hours+self.prediction_hours],
+        plt.plot(dataset['Timestamp'][:self.training_hours + self.prediction_hours],
                  scaler.inverse_transform(np.concatenate([train_predictions_2d, test_predictions_2d])),
                  color='blue', label='Predicted')
 
-        plt.scatter(dataset['Timestamp'][self.training_hours:self.training_hours+self.prediction_hours],
+        plt.scatter(dataset['Timestamp'][self.training_hours:self.training_hours + self.prediction_hours],
                     scaler.inverse_transform(test_outputs).flatten(),
                     color='red', label='Actual', s=10)
 
