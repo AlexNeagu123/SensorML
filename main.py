@@ -11,8 +11,8 @@ def main():
     dataset = pd.read_csv("dataset/SensorMLDataset.csv")
     dataset['Timestamp'] = pd.to_datetime(dataset['Timestamp'])
 
-    correlation_matrix(dataset)
-    create_box_plots(dataset)
+    # correlation_matrix(dataset)
+    # create_box_plots(dataset)
     # prophet_model = ProphetModel(TRAINING_HOURS, PREDICTION_HOURS)
     # prophet_model.make_predictions(dataset, 'temp1')
 
