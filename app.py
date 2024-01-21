@@ -1,9 +1,8 @@
 import pandas as pd
-
+import requests
 from data_analysis.analysis import correlation_matrix, create_box_plots
 from globals import *
 from flask import Flask, send_file
-from imgur_python import Imgur
 
 from prophet_predictions.prophet_model import ProphetModel
 from rnn.rnn_model import RnnModel
@@ -78,18 +77,31 @@ def make_predictions(model_type, training_hours, prediction_hours, variable_name
     return model.make_predictions(dataset, variable_name)
 
 
-def get_link_predict(plot_type):
-    imgur_client = Imgur({'client_id': IMGUR_CLIENT_ID})
-    if plot_type == 'boxplots':
-        iamge_url = imgur_client.image_upload('plots/box_plots.png', title='Box Plots',
-                                              description='Box Plots')['response']['data']['link']
-    elif plot_type == 'correlation-matrix':
-        iamge_url = imgur_client.image_upload('plots/cor_matrix.png', title='Correlation Matrix',
-                                              description='Correlation Matrix')['response']['data']['link']
+def upload_image(file_path, title, description):
+    upload_url = 'https://api.imgur.com/3/upload'
+    headers = {'Authorization': 'Client-ID ' + IMGUR_CLIENT_ID}
+
+    with open(file_path, 'rb') as file:
+        files = {'image': file}
+        data = {'title': title, 'description': description}
+
+        response = requests.post(upload_url, headers=headers, data=data, files=files)
+
+    if response.status_code == 200:
+        return response.json()['data']['link']
     else:
-        iamge_url = imgur_client.image_upload('plots/plot.png', title='Plot',
-                                              description='Plot')['response']['data']['link']
-    return iamge_url
+        print(f"Image upload failed. Status code: {response.status_code}")
+        return None
+
+def get_link_predict(plot_type):
+    if plot_type == 'boxplots':
+        image_url = upload_image('plots/box_plots.png', 'Box Plots', 'Box Plots')
+    elif plot_type == 'correlation-matrix':
+        image_url = upload_image('plots/cor_matrix.png', 'Correlation Matrix', 'Correlation Matrix')
+    else:
+        image_url = upload_image('plots/plot.png', 'Plot', 'Plot')
+
+    return image_url
 
 
 if __name__ == '__main__':
