@@ -11,3 +11,5 @@
 :adult: **Ion Golban** from **3A4**
 
 :adult: **Sebastian Duluman** from **3A4**
+
+- Frontend: https://github.com/PetruVamanu/SensorML-Front
